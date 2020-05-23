@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.nn.functional as F
 import numpy as np
@@ -7,8 +8,12 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import skimage.transform
 import argparse
-from scipy.misc import imread, imresize
+from imageio import imread
 from PIL import Image
+# from scipy.misc import imread, imresize
+from PIL import Image
+import matplotlib as mpl
+mpl.use('Agg')
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -33,7 +38,8 @@ def caption_image_beam_search(encoder, decoder, image_path, word_map, beam_size=
     if len(img.shape) == 2:
         img = img[:, :, np.newaxis]
         img = np.concatenate([img, img, img], axis=2)
-    img = imresize(img, (256, 256))
+    img = np.array(Image.fromarray(img).resize((256, 256)))
+    # img = imresize(img, (256, 256))
     img = img.transpose(2, 0, 1)
     img = img / 255.
     img = torch.FloatTensor(img).to(device)
@@ -147,7 +153,7 @@ def caption_image_beam_search(encoder, decoder, image_path, word_map, beam_size=
     return seq, alphas
 
 
-def visualize_att(image_path, seq, alphas, rev_word_map, smooth=True):
+def visualize_att(image_path, seq, alphas, rev_word_map, vis_path, smooth=True):
     """
     Visualizes caption with weights at every word.
 
@@ -157,6 +163,7 @@ def visualize_att(image_path, seq, alphas, rev_word_map, smooth=True):
     :param seq: caption
     :param alphas: weights
     :param rev_word_map: reverse word mapping, i.e. ix2word
+    :param vis_path: path to store visualization result
     :param smooth: smooth weights?
     """
     image = Image.open(image_path)
@@ -182,7 +189,8 @@ def visualize_att(image_path, seq, alphas, rev_word_map, smooth=True):
             plt.imshow(alpha, alpha=0.8)
         plt.set_cmap(cm.Greys_r)
         plt.axis('off')
-    plt.show()
+    # plt.show()
+    plt.savefig(os.path.join(vis_path, 'attn.jpg'))
 
 
 if __name__ == '__main__':
@@ -192,6 +200,7 @@ if __name__ == '__main__':
     parser.add_argument('--model', '-m', help='path to model')
     parser.add_argument('--word_map', '-wm', help='path to word map JSON')
     parser.add_argument('--beam_size', '-b', default=5, type=int, help='beam size for beam search')
+    parser.add_argument('--vis_path', '-vp', help='path to store visualization result')
     parser.add_argument('--dont_smooth', dest='smooth', action='store_false', help='do not smooth alpha overlay')
 
     args = parser.parse_args()
@@ -215,4 +224,4 @@ if __name__ == '__main__':
     alphas = torch.FloatTensor(alphas)
 
     # Visualize caption and attention of best sequence
-    visualize_att(args.img, seq, alphas, rev_word_map, args.smooth)
+    visualize_att(args.img, seq, alphas, rev_word_map, args.vis_path, args.smooth)
