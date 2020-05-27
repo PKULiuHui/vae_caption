@@ -1,4 +1,4 @@
-# vae_caption
+# CVAE for Image Caption
 
 本文件是基于CVAE的Image Caption任务的项目。
 
